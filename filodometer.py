@@ -9,7 +9,7 @@ import time
 import traceback
 from smbpi.nixie_shift import NixieShift, PIN_DATA, PIN_LATCH, PIN_CLK
 
-PROMETHEUS_URL = "http://198.0.0.246:8000/"
+PROMETHEUS_URL = "http://198.0.0.252:8000/"
 
 
 class Filodometer(threading.Thread):
@@ -22,7 +22,7 @@ class Filodometer(threading.Thread):
         self.last_value = -1
 
     def run_once(self):
-        r = requests.get(PROMETHEUS_URL)
+        r = requests.get(PROMETHEUS_URL, timeout=10)
         if r.status_code != 200:
             return
 
@@ -41,8 +41,10 @@ class Filodometer(threading.Thread):
                 self.printing = float(parts[1]) > 0
 
         if self.printing:
+            self.nixie.set_powctl(1)
             value = int(self.extrusion_print/10)*10000 + int(self.progress*10) + 2
         else:
+            self.nixie.set_powctl(0)
             value = None
 
         if value != self.last_value:
@@ -67,7 +69,7 @@ class Filodometer(threading.Thread):
 
 
 def main():
-    n = NixieShift(PIN_DATA, PIN_LATCH, PIN_CLK, 8, True, blank=[1])
+    n = NixieShift(PIN_DATA, PIN_LATCH, PIN_CLK, 8, True, blank=[1], enable_rev2=True)
 
     Filodometer(n).start()
 
